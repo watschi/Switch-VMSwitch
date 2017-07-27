@@ -88,7 +88,7 @@ function Switch-VMSwitch {
             $VMNameValidateSet = Get-VM | Select-Object -ExpandProperty Name
         }
 
-        # Set DynamicParam attributes and create AttributeCollections
+        # Set DynamicParam attributes and create AttributeCollections for each DynamicParam
         $FromName = 'From'
         $FromAttributeProperty = @{
             Mandatory = $true;
