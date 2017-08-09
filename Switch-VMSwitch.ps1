@@ -47,48 +47,18 @@ This will change the virtual switch connected to the network adapters that are c
 Switch-VMSwitch -From WiFiSwitch -To EthernetSwitch -VMName 'TestVM'
 
 This will change the virtual switch connected to the network adapters that are currently connected to the 'WifiSwitch' to 'EthernetSwitch' only for 'TestVM' on a local Hyper-V installation.
-.EXAMPLE
-Switch-VMSwitch -From vSwitchOld -To vSwitchNew -ComputerName 'Hyper-V-Host' -Credentials $Credentials
-
-This will change the virtual switch connected to the network adapters that are currently connected to 'vSwitchOld' to 'vSwitchNew' for all VMs on 'Hyper-V-Host'.
 #>
 
 function Switch-VMSwitch {
 
-    [CmdletBinding(SupportsShouldProcess = $true)]
-    Param (
-        # The Hyper-V host this is run on, defaults to localhost.
-        [Parameter(Position = 3,
-                   ValueFromPipelineByPropertyName = $true)]
-        [string[]]
-        $ComputerName = $env:COMPUTERNAME,
-
-        # Credentials for the Hyper-V host if needed.
-        [Parameter(Position = 4)]
-        [System.Management.Automation.PSCredential]
-        $Credential
-    )
+    [CmdletBinding()]
+    Param ()
 
     DynamicParam {
         # https://blogs.technet.microsoft.com/pstips/2014/06/09/dynamic-validateset-in-a-dynamic-parameter/
-        # Set ValidateSet depending on the specified ComputerName (Have to include this 'hack' since default values are not getting passes into this block)
-        if ($ComputerName) {
-            if ($Credential) {
-                $FromValidateSet = Get-VMSwitch -ComputerName $ComputerName -Credential $Credential | Select-Object -ExpandProperty Name
-                $ToValidateSet = Get-VMSwitch -ComputerName $ComputerName -Credential $Credential | Select-Object -ExpandProperty Name
-                $VMNameValidateSet = Get-VM -ComputerName $ComputerName -Credential $Credential | Select-Object -ExpandProperty Name
-            } else {
-                $FromValidateSet = Get-VMSwitch -ComputerName $ComputerName | Select-Object -ExpandProperty Name
-                $ToValidateSet = Get-VMSwitch -ComputerName $ComputerName | Select-Object -ExpandProperty Name
-                $VMNameValidateSet = Get-VM -ComputerName $ComputerName | Select-Object -ExpandProperty Name
-            }
-        } else {
-            $FromValidateSet = Get-VMSwitch | Select-Object -ExpandProperty Name
-            $ToValidateSet = Get-VMSwitch | Select-Object -ExpandProperty Name
-            $VMNameValidateSet = Get-VM | Select-Object -ExpandProperty Name
-        }
-
         # Set DynamicParam attributes and create AttributeCollections for each DynamicParam
+
+        # From Parameter
         $FromName = 'From'
         $FromAttributeProperty = @{
             Mandatory = $true;
@@ -97,32 +67,36 @@ function Switch-VMSwitch {
         }
         $FromAttribute = New-Object System.Management.Automation.ParameterAttribute -Property $FromAttributeProperty
 
+        $FromValidateSet = Get-VMSwitch | Select-Object -ExpandProperty Name
+        $FromValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($FromValidateSet)
+
         $FromAttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
         $FromAttributeCollection.Add($FromAttribute)
-
-        $FromValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($FromValidateSet)
         $FromAttributeCollection.Add($FromValidateSetAttribute)
-        
+
         $FromRuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($FromName, [string], $FromAttributeCollection)
 
 
+        # To Parameter
         $ToName = 'To'
         $ToAttributeProperty = @{
             Mandatory = $true;
             HelpMessage = 'The switch the network adapter should get connected to';
-            Position = 0
+            Position = 1
         }
         $ToAttribute = New-Object System.Management.Automation.ParameterAttribute -Property $ToAttributeProperty
 
+        $ToValidateSet = Get-VMSwitch | Select-Object -ExpandProperty Name
+        $ToValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ToValidateSet)
+
         $ToAttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
         $ToAttributeCollection.Add($ToAttribute)
-
-        $ToValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ToValidateSet)
         $ToAttributeCollection.Add($ToValidateSetAttribute)
 
         $ToRuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ToName, [string], $ToAttributeCollection)
 
 
+        # VMName Parameter
         $VMNameName = 'VMName'
         $VMNameAttributeProperty = @{
             HelpMessage = 'VMs whose virtual switch should get changed';
@@ -131,10 +105,11 @@ function Switch-VMSwitch {
         }
         $VMNameAttribute = New-Object System.Management.Automation.ParameterAttribute -Property $VMNameAttributeProperty
 
+        $VMNameValidateSet = Get-VM | Select-Object -ExpandProperty Name
+        $VMNameValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($VMNameValidateSet)
+
         $VMNameAttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
         $VMNameAttributeCollection.Add($VMNameAttribute)
-
-        $VMNameValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($VMNameValidateSet)
         $VMNameAttributeCollection.Add($VMNameValidateSetAttribute)
 
         $VMNameRuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($VMNameName, [string], $VMNameAttributeCollection)
@@ -167,11 +142,7 @@ function Switch-VMSwitch {
 
     Process {
 
-        if ($Credential) {
-            $VMNetworkAdapters = (Get-VM -ComputerName $ComputerName -Name $VMName -Credential $Credential).NetworkAdapters
-        } else {
-            $VMNetworkAdapters = (Get-VM -ComputerName $ComputerName -Name $VMName).NetworkAdapters
-        }
+        $VMNetworkAdapters = (Get-VM -Name $VMName).NetworkAdapters
 
         Foreach ($Adapter in $VMNetworkAdapters | Where-Object SwitchName -eq $From) {
             $Adapter | Connect-VMNetworkAdapter -SwitchName $To
