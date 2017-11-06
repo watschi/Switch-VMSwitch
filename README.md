@@ -3,7 +3,7 @@ Useful script if you are running Hyper-V on a notebook and want to quickly switc
 **Usage**  
 
 `Switch-VMSwitch -From WiFi -To Ethernet`  
-WiFi and Ethernet would be the names of your Hyper-V switches, the will be auto suggested and validated against the actual existing switches.
+WiFi and Ethernet would be the names of your Hyper-V switches, they will be auto suggested and validated against the actual existing switches.
 
 You can specify only certain VMs with the VMName parameter like so:  
 `Switch-VMSwitch -From OldSwitch -To NewSwitch -VMName MyVirtualMachine`  
